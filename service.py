@@ -60,6 +60,12 @@ def handler(event, context):
     saFeed.ParseFromString(saResponse.content)
     for entity in saFeed.entity:
         if entity.HasField('alert'):
-            print(entity.alert)
+            include_alert = False
+            for informed in entity.alert.informed_entity:
+                if informed.route_type == 1:  # Subway
+                    include_alert = True
+                    break
+            if include_alert:
+                print(entity.alert)
 
     stats.flush()
