@@ -1,2 +1,4 @@
 python-lambda
 datadog
+gtfs-realtime-bindings
+requests
