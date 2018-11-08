@@ -4,6 +4,7 @@ import os
 import requests
 from datadog import api, initialize, ThreadStats
 from google.transit import gtfs_realtime_pb2
+import stops
 
 options = {
     'api_key': os.environ.get('DD_API_KEY'),
@@ -14,13 +15,43 @@ initialize(**options)
 
 
 def handler(event, context):
+    stats = ThreadStats()
+    stats.start()
+
     tripFeed = gtfs_realtime_pb2.FeedMessage()
     tripResponse = requests.get('https://cdn.mbta.com/realtime/TripUpdates.pb')
     tripFeed.ParseFromString(tripResponse.content)
+    tripFeedTs = tripFeed.header.timestamp
     for entity in tripFeed.entity:
-        if entity.HasField('trip_update'):
-            pass
-#            print(entity.trip_update)
+        if entity.HasField('tripUpdate'):
+            tripUpdate = entity.tripUpdate
+            if tripUpdate.trip.route_id == 'Red':
+                last_stop_id = tripUpdate.stop_time_update[len(tripUpdate.stop_time_update) - 1].stop_id
+                destination = stops.stopNames[last_stop_id]
+                trip_id = tripUpdate.trip.trip_id
+
+                for stop in tripUpdate.stop_time_update:
+                    stopName = stops.stopNames[stop.stop_id]
+
+                    if stop.departure.time > 0:
+                        if stop.arrival.time > 0:
+                            # mid-route stop, use arrival time
+                            time = stop.arrival.time
+                        else:
+                            # first stop, use departure time
+                            time = stop.departure.time
+                    else:
+                        # last stop, ignore
+                        continue
+
+                    arrives_in = time - tripFeedTs
+                    tags = [
+                        'trip_id:{}'.format(trip_id),
+                        'stop:{}'.format(stopName),
+                        'destination:{}'.format(destination),
+                        'route:Red Line',
+                    ]
+                    stats.gauge('mbta.trip.arrival', arrives_in, tags=tags)
 
     saFeed = gtfs_realtime_pb2.FeedMessage()
     saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
@@ -29,13 +60,10 @@ def handler(event, context):
         if entity.HasField('alert'):
             print(entity.alert)
 
-    stats = ThreadStats()
-    stats.start()
-    stats.increment('mbta.api.test.counter')
-    stats.flush()
-
     title = "Something big happened!"
     text = 'And let me tell you all about it here!'
     tags = ['version:1', 'application:web']
 
     api.Event.create(title=title, text=text, tags=tags)
+
+    stats.flush()
