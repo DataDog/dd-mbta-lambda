@@ -4,7 +4,8 @@ import os
 import requests
 from datadog import api, initialize, ThreadStats
 from google.transit import gtfs_realtime_pb2
-import stops
+from stops import stop_names
+from routes import route_names
 
 options = {
     'api_key': os.environ.get('DD_API_KEY'),
@@ -18,42 +19,44 @@ def handler(event, context):
     stats = ThreadStats()
     stats.start()
 
-    tripFeed = gtfs_realtime_pb2.FeedMessage()
-    tripResponse = requests.get('https://cdn.mbta.com/realtime/TripUpdates.pb')
-    tripFeed.ParseFromString(tripResponse.content)
-    tripFeedTs = tripFeed.header.timestamp
-    for entity in tripFeed.entity:
+    trip_feed = gtfs_realtime_pb2.FeedMessage()
+    trip_response = requests.get('https://cdn.mbta.com/realtime/TripUpdates.pb')
+    trip_feed.ParseFromString(trip_response.content)
+    trip_feed_ts = trip_feed.header.timestamp
+    for entity in trip_feed.entity:
         if entity.HasField('trip_update'):
-            tripUpdate = entity.trip_update
-            if tripUpdate.trip.route_id == 'Red':
-                last_stop_id = tripUpdate.stop_time_update[len(tripUpdate.stop_time_update) - 1].stop_id
-                destination = stops.stopNames[last_stop_id]
-                trip_id = tripUpdate.trip.trip_id
-                vehicle = tripUpdate.vehicle.label
+            trip_update = entity.trip_update
+            route_name = trip_update.trip.route_id
+            if trip_update.trip.route_id in route_names:
+                route_name = route_names[trip_update.trip.route_id]
+            last_stop_id = trip_update.stop_time_update[len(trip_update.stop_time_update) - 1].stop_id
+            destination = stop_names[last_stop_id]
+            trip_id = trip_update.trip.trip_id
+            vehicle = trip_update.vehicle.label
 
-                for stop in tripUpdate.stop_time_update:
-                    stopName = stops.stopNames[stop.stop_id]
+            for stop in trip_update.stop_time_update:
+                stop_name = stop_names[stop.stop_id]
 
-                    if stop.departure.time > 0:
-                        if stop.arrival.time > 0:
-                            # mid-route stop, use arrival time
-                            time = stop.arrival.time
-                        else:
-                            # first stop, use departure time
-                            time = stop.departure.time
+                if stop.departure.time > 0:
+                    if stop.arrival.time > 0:
+                        # mid-route stop, use arrival time
+                        time = stop.arrival.time
                     else:
-                        # last stop, ignore
-                        continue
+                        # first stop, use departure time
+                        time = stop.departure.time
+                else:
+                    # last stop, ignore
+                    continue
 
-                    arrives_in = time - tripFeedTs
-                    tags = [
-                        'trip_id:{}'.format(trip_id),
-                        'stop:{}'.format(stopName),
-                        'destination:{}'.format(destination),
-                        'vehicle:{}'.format(vehicle),
-                        'route:Red Line',
-                    ]
-                    stats.gauge('mbta.trip.arrival', arrives_in, tags=tags)
+                arrives_in = (time - trip_feed_ts) / 60  # Report in minutes
+                tags = [
+                    'trip_id:{}'.format(trip_id),
+                    'stop:{}'.format(stop_name),
+                    'destination:{}'.format(destination),
+                    'vehicle:{}'.format(vehicle),
+                    'route:{}'.format(route_name),
+                ]
+                stats.gauge('mbta.trip.arrival', arrives_in, tags=tags)
 
     saFeed = gtfs_realtime_pb2.FeedMessage()
     saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
