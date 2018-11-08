@@ -48,7 +48,7 @@ def handler(event, context):
                     # last stop, ignore
                     continue
 
-                arrives_in = (time - trip_feed_ts) / 60  # Report in minutes
+                arrives_in = (time - trip_feed_ts)
                 tags = [
                     'trip_id:{}'.format(trip_id),
                     'stop:{}'.format(stop_name),
@@ -56,7 +56,8 @@ def handler(event, context):
                     'vehicle:{}'.format(vehicle),
                     'route:{}'.format(route_name),
                 ]
-                stats.gauge('mbta.trip.arrival', arrives_in, tags=tags)
+                stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
+                stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
 
     saFeed = gtfs_realtime_pb2.FeedMessage()
     saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
