@@ -23,12 +23,13 @@ def handler(event, context):
     tripFeed.ParseFromString(tripResponse.content)
     tripFeedTs = tripFeed.header.timestamp
     for entity in tripFeed.entity:
-        if entity.HasField('tripUpdate'):
-            tripUpdate = entity.tripUpdate
+        if entity.HasField('trip_update'):
+            tripUpdate = entity.trip_update
             if tripUpdate.trip.route_id == 'Red':
                 last_stop_id = tripUpdate.stop_time_update[len(tripUpdate.stop_time_update) - 1].stop_id
                 destination = stops.stopNames[last_stop_id]
                 trip_id = tripUpdate.trip.trip_id
+                vehicle = tripUpdate.vehicle.label
 
                 for stop in tripUpdate.stop_time_update:
                     stopName = stops.stopNames[stop.stop_id]
@@ -49,6 +50,7 @@ def handler(event, context):
                         'trip_id:{}'.format(trip_id),
                         'stop:{}'.format(stopName),
                         'destination:{}'.format(destination),
+                        'vehicle:{}'.format(vehicle),
                         'route:Red Line',
                     ]
                     stats.gauge('mbta.trip.arrival', arrives_in, tags=tags)
@@ -59,11 +61,5 @@ def handler(event, context):
     for entity in saFeed.entity:
         if entity.HasField('alert'):
             print(entity.alert)
-
-    title = "Something big happened!"
-    text = 'And let me tell you all about it here!'
-    tags = ['version:1', 'application:web']
-
-    api.Event.create(title=title, text=text, tags=tags)
 
     stats.flush()

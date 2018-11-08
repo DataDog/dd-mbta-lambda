@@ -1,3 +1,4 @@
+1. Create/activate a python3.6 virtualenv
 1. Install requirements
 1. Setup your aws credentials
 1. Get your Datadog API / app keys
