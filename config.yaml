@@ -17,14 +17,13 @@ aws_access_key_id:
 aws_secret_access_key:
 
 # dist_directory: dist
-# timeout: 15
+timeout: 60
 # memory_size: 512
 # concurrency: 500
 #
 
 # Experimental Environment variables
 environment_variables:
-    MBTA_API_KEY: ${MBTA_API_KEY}
     DD_API_KEY: ${DD_API_KEY}
     DD_APP_KEY: ${DD_APP_KEY}
 
