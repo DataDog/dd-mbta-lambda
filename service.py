@@ -52,12 +52,17 @@ def handler(event, context):
                     continue
 
                 arrives_in = (time - trip_feed_ts)
+                catchable_tag = 'catchable:false'
+                if arrives_in > 120:
+                    catchable_tag = 'catchable:true'
+
                 tags = [
                     'trip_id:{}'.format(trip_id),
                     'stop:{}'.format(stop_name),
                     'destination:{}'.format(destination),
                     'vehicle:{}'.format(vehicle),
                     'route:{}'.format(route_name),
+                    catchable_tag,
                 ]
                 stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
