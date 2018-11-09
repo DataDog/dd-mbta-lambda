@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
+import time
 
 import requests
+
+from boto.dynamodb2 import exceptions
+from boto.dynamodb2.items import Item
+from boto.dynamodb2.table import Table
 from datadog import api, initialize, ThreadStats
 from google.transit import gtfs_realtime_pb2
 from stops import stop_names
@@ -13,6 +18,7 @@ options = {
 }
 
 initialize(**options)
+
 
 def ingest_trip_updates():
     stats = ThreadStats()
@@ -78,19 +84,102 @@ def ingest_trip_updates():
     print("Done")
 
 
+def ingest_alerts():
+    alerts_table = Table('mbta_alerts')
+    saFeed = gtfs_realtime_pb2.FeedMessage()
+    saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
+    saFeed.ParseFromString(saResponse.content)
+    now_ts = time.time()
+    alerts = []
+    for entity in saFeed.entity:
+        if entity.HasField('alert'):
+            include_alert = False
+            for informed in entity.alert.informed_entity:
+                if informed.route_type <= 1:  # Subway/Green Line
+                    include_alert = True
+                    break
+            if include_alert:
+                include_alert = False
+                for period in entity.alert.active_period:
+                    # Include all future and current alerts
+                    if period.end == 0 or now_ts < period.end:
+                        include_alert = True
+                        break
+
+            if include_alert and entity.alert.effect != 7:  # Not OTHER_EFFECT
+                alerts.append(entity)
+
+    for entity in alerts:
+        id = int(entity.id)
+        alert = entity.alert
+
+        current_period = None
+        min_period = None
+        for period in entity.alert.active_period:
+            if period.start > now_ts and (period.end == 0 or now_ts < period.end):
+                current_period = period
+                break
+            if min_period is None or min_period.start < period.start:
+                min_period = period
+
+        if current_period is None:
+            current_period = min_period
+
+        alert_item = None
+        try:
+            alert_item = alerts_table.get_item(alert_id=id)
+        except exceptions.ItemNotFound:
+            pass
+        if not alert_item or alert_item['start'] != current_period.start:
+            alert_item = Item(alerts_table, data={
+                'alert_id': id,
+                'start': current_period.start,
+                'end': current_period.end,
+            })
+
+            send_and_save_event(alert_item, alert, current_period)
+
+
+effect_status_mapping = {
+    1: 'error',
+    2: 'error',
+    3: 'error',
+    4: 'warning',
+    5: 'info',
+    6: 'warning',
+    7: 'info',
+    8: 'info',
+    9: 'warning',
+}
+
+def send_and_save_event(alert_item, alert, current_period):
+        title = alert.header_text.translation[0].text
+        text = alert.description_text.translation[0].text
+        cause = gtfs_realtime_pb2.Alert().Cause.Name(alert.cause)
+        effect = gtfs_realtime_pb2.Alert().Effect.Name(alert.effect)
+        tags = []
+        for informed in alert.informed_entity:
+            if informed.route_type <= 1:
+                tags.append('route:{}'.format(informed.route_id))
+        tags = [
+            'cause:{}'.format(cause),
+            'effect:{}'.format(effect),
+        ]
+        print(title)
+        print(text)
+        print(cause)
+        print(effect)
+        print(effect_status_mapping[alert.effect])
+        api.Event.create(title=title,
+                         text=text,
+                         tags=tags,
+                         date_happened=current_period.start,
+                         alert_type=effect_status_mapping[alert.effect],
+                         aggregation_key=str(alert_item['alert_id']),
+                         )
+        alert_item.save()
+
+
 def handler(event, context):
     ingest_trip_updates()
-
-
-    #saFeed = gtfs_realtime_pb2.FeedMessage()
-    #saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
-    #saFeed.ParseFromString(saResponse.content)
-    #for entity in saFeed.entity:
-    #    if entity.HasField('alert'):
-    #        include_alert = False
-    #        for informed in entity.alert.informed_entity:
-    #            if informed.route_type == 1:  # Subway
-    #                include_alert = True
-    #                break
-    #        if include_alert:
-    #            print(entity.alert)
+    ingest_alerts()
