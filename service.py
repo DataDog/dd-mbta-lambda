@@ -92,7 +92,7 @@ def ingest_currentmetrics():
 
     mbta_perf_api_key = os.environ.get('MBTA_PERF_API_KEY')
 
-    routes = ['red', 'orange', 'green', 'blue']
+    routes = ['red', 'orange', 'blue', 'green-B', 'green-C', 'green-D', 'green-E']
     for route in routes:
         currentmetrics_url = 'http://realtime.mbta.com/developer/api/v2.1/currentmetrics?api_key={api_key}&format=json&route={route}'.format(
             route = route,
@@ -127,6 +127,8 @@ def ingest_currentmetrics():
                 'threshold_name:{}'.format(threshold['threshold_name']),
                 'threshold_type:{}'.format(threshold['threshold_type']),
             ]
+            if route.startswith('green'):
+                tags.append('route:green')
 
         for metric, value in metrics.items():
             stats.gauge('mbta.perf.{}'.format(metric), value, tags=tags)
