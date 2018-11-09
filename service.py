@@ -14,8 +14,7 @@ options = {
 
 initialize(**options)
 
-
-def handler(event, context):
+def ingest_trip_updates():
     stats = ThreadStats()
     stats.start()
 
@@ -73,9 +72,15 @@ def handler(event, context):
                     print("Flushing {}...".format(counter))
                     stats.flush()
                     print("Done")
+
     print("Flushing {}...".format(counter))
     stats.flush()
     print("Done")
+
+
+def handler(event, context):
+    ingest_trip_updates()
+
 
     #saFeed = gtfs_realtime_pb2.FeedMessage()
     #saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
@@ -89,4 +94,3 @@ def handler(event, context):
     #                break
     #        if include_alert:
     #            print(entity.alert)
-
