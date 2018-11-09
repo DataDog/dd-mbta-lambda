@@ -61,19 +61,21 @@ def handler(event, context):
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
                 counter += 1
                 if counter % 100 == 0:
+                    print("Flushing {}...".format(counter))
                     stats.flush()
+                    print("Done")
 
-    saFeed = gtfs_realtime_pb2.FeedMessage()
-    saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
-    saFeed.ParseFromString(saResponse.content)
-    for entity in saFeed.entity:
-        if entity.HasField('alert'):
-            include_alert = False
-            for informed in entity.alert.informed_entity:
-                if informed.route_type == 1:  # Subway
-                    include_alert = True
-                    break
-            if include_alert:
-                print(entity.alert)
+    #saFeed = gtfs_realtime_pb2.FeedMessage()
+    #saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
+    #saFeed.ParseFromString(saResponse.content)
+    #for entity in saFeed.entity:
+    #    if entity.HasField('alert'):
+    #        include_alert = False
+    #        for informed in entity.alert.informed_entity:
+    #            if informed.route_type == 1:  # Subway
+    #                include_alert = True
+    #                break
+    #        if include_alert:
+    #            print(entity.alert)
 
     stats.flush()
