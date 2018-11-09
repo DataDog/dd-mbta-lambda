@@ -64,6 +64,8 @@ def handler(event, context):
                     'route:{}'.format(route_name),
                     catchable_tag,
                 ]
+                if route_name.startswith('Green'):
+                    tags.append('route:green')
                 stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
                 counter += 1
