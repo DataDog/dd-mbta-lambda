@@ -60,7 +60,7 @@ def handler(event, context):
                 stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
                 counter += 1
-                if counter % 100 == 0:
+                if counter % 50 == 0:
                     print("Flushing {}...".format(counter))
                     stats.flush()
                     print("Done")
