@@ -128,13 +128,13 @@ def ingest_currentmetrics():
                 'threshold_type:{}'.format(threshold['threshold_type']),
             ]
 
-            for metric, value in metrics.items():
-                stats.gauge('mbta.perf.{}'.format(metric), value, tags=tags)
-                counter += 1
-                if counter % 50 == 0:
-                    print("Flushing currentmetrics {}...".format(counter))
-                    stats.flush()
-                    print("Done")
+        for metric, value in metrics.items():
+            stats.gauge('mbta.perf.{}'.format(metric), value, tags=tags)
+            counter += 1
+            if counter % 50 == 0:
+                print("Flushing currentmetrics {}...".format(counter))
+                stats.flush()
+                print("Done")
 
     print("Flushing currentmetrics {}...".format(counter))
     stats.flush()
