@@ -36,7 +36,6 @@ def handler(event, context):
             vehicle = trip_update.vehicle.label
 
             for stop in trip_update.stop_time_update:
-                counter += 1
                 stop_name = stop_names[stop.stop_id]
 
                 if stop.departure.time > 0:
@@ -60,6 +59,7 @@ def handler(event, context):
                 ]
                 stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
+                counter += 1
                 if counter % 100 == 0:
                     stats.flush()
 
