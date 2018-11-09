@@ -192,8 +192,12 @@ def ingest_alerts():
                 'alert_id': id,
                 'start': current_period.start,
                 'end': current_period.end,
+                'future': (current_period.start > now_ts),
             })
 
+            send_and_save_event(alert_item, alert, current_period)
+        elif alert_item['future'] == True and alert_item['start'] < now_ts:
+            alert_item['future'] = False
             send_and_save_event(alert_item, alert, current_period)
 
 
@@ -231,7 +235,7 @@ def send_and_save_event(alert_item, alert, current_period):
         print(api.Event.create(title=title,
                          text=text,
                          tags=tags,
-                         date_happened=current_period.start,
+                         date_happened=min(current_period.start, time.time()),
                          alert_type=effect_status_mapping[alert.effect],
                          aggregation_key=str(alert_item['alert_id']),
                          ))
