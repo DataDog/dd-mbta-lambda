@@ -26,7 +26,6 @@ def handler(event, context):
     counter = 0
     for entity in trip_feed.entity:
         if entity.HasField('trip_update'):
-            counter += 1
             trip_update = entity.trip_update
             route_name = trip_update.trip.route_id
             if trip_update.trip.route_id in route_names:
@@ -37,6 +36,7 @@ def handler(event, context):
             vehicle = trip_update.vehicle.label
 
             for stop in trip_update.stop_time_update:
+                counter += 1
                 stop_name = stop_names[stop.stop_id]
 
                 if stop.departure.time > 0:
@@ -60,8 +60,8 @@ def handler(event, context):
                 ]
                 stats.gauge('mbta.trip.arrival_secs', arrives_in, tags=tags)
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
-            if counter % 100 == 0:
-                stats.flush()
+                if counter % 100 == 0:
+                    stats.flush()
 
     saFeed = gtfs_realtime_pb2.FeedMessage()
     saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
