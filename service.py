@@ -27,6 +27,8 @@ def handler(event, context):
     for entity in trip_feed.entity:
         if entity.HasField('trip_update'):
             trip_update = entity.trip_update
+            if trip_update.trip.route_id not in ('Red', 'Orange', 'Blue', 'Green-B', 'Green-C', 'Green-D', 'Green-E'):
+                continue
             route_name = trip_update.trip.route_id
             if trip_update.trip.route_id in route_names:
                 route_name = route_names[trip_update.trip.route_id]
@@ -64,6 +66,9 @@ def handler(event, context):
                     print("Flushing {}...".format(counter))
                     stats.flush()
                     print("Done")
+    print("Flushing {}...".format(counter))
+    stats.flush()
+    print("Done")
 
     #saFeed = gtfs_realtime_pb2.FeedMessage()
     #saResponse = requests.get('https://cdn.mbta.com/realtime/Alerts.pb')
@@ -78,4 +83,3 @@ def handler(event, context):
     #        if include_alert:
     #            print(entity.alert)
 
-    stats.flush()
