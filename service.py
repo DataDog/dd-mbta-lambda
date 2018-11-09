@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import json
 import os
-
 import requests
+
 from datadog import api, initialize, ThreadStats
 from google.transit import gtfs_realtime_pb2
 from stops import stop_names
@@ -17,12 +18,12 @@ initialize(**options)
 def ingest_trip_updates():
     stats = ThreadStats()
     stats.start()
+    counter = 0
 
     trip_feed = gtfs_realtime_pb2.FeedMessage()
     trip_response = requests.get('https://cdn.mbta.com/realtime/TripUpdates.pb')
     trip_feed.ParseFromString(trip_response.content)
     trip_feed_ts = trip_feed.header.timestamp
-    counter = 0
     for entity in trip_feed.entity:
         if entity.HasField('trip_update'):
             trip_update = entity.trip_update
@@ -69,17 +70,75 @@ def ingest_trip_updates():
                 stats.gauge('mbta.trip.arrival_min', arrives_in / 60, tags=tags)
                 counter += 1
                 if counter % 50 == 0:
-                    print("Flushing {}...".format(counter))
+                    print("Flushing trip updates {}...".format(counter))
                     stats.flush()
                     print("Done")
 
-    print("Flushing {}...".format(counter))
+    print("Flushing trip updates {}...".format(counter))
     stats.flush()
     print("Done")
 
 
+def ingest_currentmetrics():
+    stats = ThreadStats()
+    stats.start()
+    counter = 0
+
+    mbta_perf_api_key = os.environ.get('MBTA_PERF_API_KEY')
+
+    routes = ['red', 'orange', 'green', 'blue']
+    for route in routes:
+        currentmetrics_url = 'http://realtime.mbta.com/developer/api/v2.1/currentmetrics?api_key={api_key}&format=json&route={route}'.format(
+            route = route,
+            api_key = mbta_perf_api_key,
+        )
+        currentmentrics_response = requests.get(currentmetrics_url)
+        currentmetrics = json.loads(currentmentrics_response.content)
+
+        # in the absence of data, assume good service, which means 100% of customers under all thresholds
+        metrics = {
+            'threshold_id_01.metric_result_last_hour': 1,
+            'threshold_id_01.metric_result_current_day': 1,
+            'threshold_id_02.metric_result_last_hour': 1,
+            'threshold_id_02.metric_result_current_day': 1,
+            'threshold_id_03.metric_result_last_hour': 1,
+            'threshold_id_03.metric_result_current_day': 1,
+            'threshold_id_04.metric_result_last_hour': 1,
+            'threshold_id_04.metric_result_current_day': 1,
+            'threshold_id_05.metric_result_last_hour': 1,
+            'threshold_id_05.metric_result_current_day': 1,
+            'threshold_id_06.metric_result_last_hour': 1,
+            'threshold_id_06.metric_result_current_day': 1,
+        }
+        for threshold in currentmetrics['current_metrics']:
+            metric_last_hour = '{}.metric_result_last_hour'.format(threshold['threshold_id'])
+            metric_current_day = '{}.metric_result_current_day'.format(threshold['threshold_id'])
+            metrics[metric_last_hour] = threshold['metric_result_last_hour']
+            metrics[metric_current_day] = threshold['metric_result_current_day']
+
+            tags = [
+                'route:{}'.format(route),
+                'threshold_name:{}'.format(threshold['threshold_name']),
+                'threshold_type:{}'.format(threshold['threshold_type']),
+            ]
+
+            for metric, value in metrics.items():
+                stats.gauge('mbta.perf.{}'.format(metric), value, tags=tags)
+                counter += 1
+                if counter % 50 == 0:
+                    print("Flushing currentmetrics {}...".format(counter))
+                    stats.flush()
+                    print("Done")
+
+    print("Flushing currentmetrics {}...".format(counter))
+    stats.flush()
+    print("Done")
+
+
+
 def handler(event, context):
     ingest_trip_updates()
+    ingest_currentmetrics()
 
 
     #saFeed = gtfs_realtime_pb2.FeedMessage()
