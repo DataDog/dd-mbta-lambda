@@ -163,7 +163,7 @@ def ingest_alerts():
                         include_alert = True
                         break
 
-            if include_alert and entity.alert.effect != 7:  # Not OTHER_EFFECT
+            if include_alert:
                 alerts.append(entity)
 
     for entity in alerts:
@@ -210,7 +210,7 @@ effect_status_mapping = {
 }
 
 def send_and_save_event(alert_item, alert, current_period):
-        title = alert.header_text.translation[0].text
+        title = '[MBTA] {}'.format(alert.header_text.translation[0].text)
         text = alert.description_text.translation[0].text
         cause = gtfs_realtime_pb2.Alert().Cause.Name(alert.cause)
         effect = gtfs_realtime_pb2.Alert().Effect.Name(alert.effect)
@@ -221,19 +221,20 @@ def send_and_save_event(alert_item, alert, current_period):
         tags = [
             'cause:{}'.format(cause),
             'effect:{}'.format(effect),
+            'service:mbta',
         ]
         print(title)
         print(text)
         print(cause)
         print(effect)
         print(effect_status_mapping[alert.effect])
-        api.Event.create(title=title,
+        print(api.Event.create(title=title,
                          text=text,
                          tags=tags,
                          date_happened=current_period.start,
                          alert_type=effect_status_mapping[alert.effect],
                          aggregation_key=str(alert_item['alert_id']),
-                         )
+                         ))
         alert_item.save()
 
 
