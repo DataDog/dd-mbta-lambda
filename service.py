@@ -204,11 +204,12 @@ def ingest_currentmetrics():
             for key in metrics:
                 metrics[key]['tags'].append('route:green')
 
-        for threshold in currentmetrics['current_metrics']:
-            metric_last_hour = '{}.metric_result_last_hour'.format(threshold['threshold_id'])
-            metric_current_day = '{}.metric_result_current_day'.format(threshold['threshold_id'])
-            metrics[metric_last_hour]['value'] = threshold['metric_result_last_hour']
-            metrics[metric_current_day]['value'] = threshold['metric_result_current_day']
+        if 'current_metrics' in currentmetrics:
+            for threshold in currentmetrics['current_metrics']:
+                metric_last_hour = '{}.metric_result_last_hour'.format(threshold['threshold_id'])
+                metric_current_day = '{}.metric_result_current_day'.format(threshold['threshold_id'])
+                metrics[metric_last_hour]['value'] = threshold['metric_result_last_hour']
+                metrics[metric_current_day]['value'] = threshold['metric_result_current_day']
 
         for metric_name, values in metrics.items():
             stats.gauge('mbta.perf.{}'.format(metric_name), values['value'], tags=values['tags'])
