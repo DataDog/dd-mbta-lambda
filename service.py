@@ -170,17 +170,15 @@ def ingest_alerts():
         id = int(entity.id)
         alert = entity.alert
 
+        sorted_active_periods = sorted(entity.alert.active_period, key=lambda period: period.start)
         current_period = None
-        min_period = None
-        for period in entity.alert.active_period:
-            if period.start > now_ts and (period.end == 0 or now_ts < period.end):
+        for period in sorted_active_periods:
+            if now_ts > period.start and (now_ts < period.end or period.end == 0):
                 current_period = period
                 break
-            if min_period is None or min_period.start < period.start:
-                min_period = period
 
-        if current_period is None:
-            current_period = min_period
+        if current_period == None:
+            continue
 
         alert_item = None
         try:
@@ -239,7 +237,7 @@ def send_and_save_event(alert_item, alert, current_period):
                          alert_type=effect_status_mapping[alert.effect],
                          aggregation_key=str(alert_item['alert_id']),
                          ))
-        alert_item.save()
+        alert_item.save(overwrite=True)
 
 
 def handler(event, context):
