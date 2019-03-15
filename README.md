@@ -7,6 +7,10 @@
 1. To run locally, `lambda invoke -v`
 1. To deploy, `lambda deploy`
 
+To update `stops.py`, download and unzip the [MBTA GTFS feed](https://cdn.mbta.com/MBTA_GTFS.zip) and run:
+
+`python mbta_gtfs_utils/stop_parser.py /path/to/MBTA_GTFS/stops.txt > stops.py
+
 See [python-lambda](https://github.com/nficano/python-lambda) for more information
 
 MBTA and GTFS resources:
