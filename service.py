@@ -18,6 +18,18 @@ options = {
     'app_key': os.environ.get('DD_APP_KEY')
 }
 
+enabled_routes = [
+    'Red',
+    'Mattapan',
+    'Orange',
+    'Blue',
+    'Green-B',
+    'Green-C',
+    'Green-D',
+    'Green-E',
+    'CR-Fairmount'
+]
+
 initialize(**options)
 
 
@@ -33,7 +45,7 @@ def ingest_trip_updates():
     for entity in trip_feed.entity:
         if entity.HasField('trip_update'):
             trip_update = entity.trip_update
-            if trip_update.trip.route_id not in ('Red', 'Orange', 'Blue', 'Green-B', 'Green-C', 'Green-D', 'Green-E'):
+            if trip_update.trip.route_id not in enabled_routes:
                 continue
             route_name = trip_update.trip.route_id
             if trip_update.trip.route_id in route_names:

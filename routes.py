@@ -2,6 +2,7 @@ route_names = {
     "Boat-F1": "Hingham/Hull Ferry",
     "Boat-F4": "Charlestown Ferry",
     "Mattapan": "Mattapan Trolley",
+    "CR-Fairmount": "Fairmount Line",
     "741": "SL1",
     "742": "SL2",
     "743": "SL3",
