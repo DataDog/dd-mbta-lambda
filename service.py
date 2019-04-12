@@ -110,8 +110,8 @@ def ingest_currentmetrics():
             route = route,
             api_key = mbta_perf_api_key,
         )
-        currentmentrics_response = requests.get(currentmetrics_url)
-        currentmetrics = json.loads(currentmentrics_response.content)
+        currentmetrics_response = requests.get(currentmetrics_url)
+        currentmetrics = json.loads(currentmetrics_response.content)
 
         # in the absence of data, assume good service, which means 100% of customers under all thresholds
         metrics = {
