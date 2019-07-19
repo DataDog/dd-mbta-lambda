@@ -116,6 +116,10 @@ def ingest_currentmetrics():
             status = currentmetrics_response.status_code,
             size = len(currentmetrics_response.text)
         ))
+        if currentmetrics_response.status_code != 200:
+            print("Error loading perf metrics: {error}".format(
+                error = currentmetrics_response.text
+            ))
         currentmetrics = json.loads(currentmetrics_response.content)
 
         # in the absence of data, assume good service, which means 100% of customers under all thresholds
